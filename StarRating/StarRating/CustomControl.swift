@@ -11,10 +11,12 @@ import UIKit
 class CustomControl: UIControl {
     
     var value = 1
+    var zeroValue = 0
     
+    var rateLabel: [UILabel] = []
     
     private let componentDimension: CGFloat = 40.0
-    private let componentCount = 6
+    private let componentCount = 5
     private let componentActiveColor = UIColor.black
     private let componentInactiveColor = UIColor.gray
 
@@ -36,6 +38,9 @@ class CustomControl: UIControl {
             label.textAlignment = .center
             
             label.textColor = rate == 1 ? componentActiveColor : componentInactiveColor
+            
+            addSubview(label)
+            rateLabel.append(label)
         }
     }
     
@@ -48,18 +53,35 @@ class CustomControl: UIControl {
     
     override func beginTracking(_ touch: UITouch, with event: UIEvent?) -> Bool {
         
-        
+        updateValue(at: touch)
         return true
     }
     
     override func continueTracking(_ touch: UITouch, with event: UIEvent?) -> Bool {
-        
+        let touchPoint = touch.location(in: self)
+        if bounds.contains(touchPoint) {
+            updateValue(at: touch)
+            sendActions(for: .touchDragInside)
+            
+        } else {
+            sendActions(for: .touchDragOutside)
+            print("Touch drag outside")
+        }
         
         return true
     }
     
     override func endTracking(_ touch: UITouch?, with event: UIEvent?) {
         
+        guard let touch = touch else {return}
+        let touchPoint = touch.location(in: self)
+        
+        if bounds.contains(touchPoint) {
+            updateValue(at: touch)
+            sendActions(for: .touchUpInside)
+        } else {
+            sendActions(for: .touchUpOutside)
+        }
     }
     
     override func cancelTracking(with event: UIEvent?) {
@@ -68,6 +90,42 @@ class CustomControl: UIControl {
     
     func updateValue(at touch: UITouch) {
         
+        let touchPoint = touch.location(in: self)
+        
+        for label in rateLabel {
+            
+            if label.frame.contains(touchPoint) {
+                value = label.tag
+                
+                for index in 1...rateLabel.count {
+                    switch index <= value {
+                    case true:
+                        rateLabel[index - 1].textColor = componentActiveColor
+                    case false:
+                        rateLabel[index - 1].textColor = componentInactiveColor
+                    }
+                }
+                if value != zeroValue {
+                    label.textColor = componentActiveColor
+                    performFlare()
+                    sendActions(for: .valueChanged)
+                }
+                zeroValue = value
+            }
+        }
+
     }
 
+}
+
+extension UIView {
+    // "Flare view" animation sequence
+    func performFlare() {
+        func flare()   { transform = CGAffineTransform(scaleX: 1.6, y: 1.6) }
+        func unflare() { transform = .identity }
+        
+        UIView.animate(withDuration: 0.3,
+                       animations: { flare() },
+                       completion: { _ in UIView.animate(withDuration: 0.1) { unflare() }})
+    }
 }
